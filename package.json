@@ -32,6 +32,7 @@
   "types": "esm",
   "sideEffects": false,
   "peerDependencies": {
+    "fetch-retry": "^5.0.6",
     "react": "^16.8.0 || ^17.0.0 || ^18.0.0"
   },
   "dependencies": {

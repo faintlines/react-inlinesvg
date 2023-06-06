@@ -2,7 +2,7 @@ import * as React from 'react';
 import convert from 'react-from-dom';
 
 import { canUseDOM, isSupportedEnvironment, omit, randomString, STATUS } from './helpers';
-import { FetchError, Props, State, StorageItem } from './types';
+import { FetchError, Props, Response, State, StorageItem } from './types';
 
 export const cacheStore: { [key: string]: StorageItem } = Object.create(null);
 
@@ -194,8 +194,26 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
         cacheStore[src] = { content: '', status: STATUS.LOADING };
       }
 
-      return fetch(src, fetchOptions)
-        .then(response => {
+      const fetchRetryWarper =
+        typeof fetch === 'function'
+          ? require('fetch-retry')(fetch, {
+              retryOn(attempt: number, error: any, response: Response) {
+                if (attempt > 5) {
+                  return false;
+                }
+
+                // retry on any network error, or 4xx or 5xx status codes
+                if (error !== null || response.status >= 400) {
+                  return true;
+                }
+
+                return false;
+              },
+            })
+          : fetch;
+
+      return fetchRetryWarper(src, fetchOptions)
+        .then((response: Response) => {
           const contentType = response.headers.get('content-type');
           const [fileType] = (contentType || '').split(/ ?; ?/);
 
@@ -212,7 +230,7 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
 
           return response.text();
         })
-        .then(content => {
+        .then((content: string) => {
           const { src: currentSrc } = this.props;
 
           // the current src don't match the previous one, skipping...
@@ -237,7 +255,7 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
             }
           }
         })
-        .catch(error => {
+        .catch((error: Error | FetchError) => {
           this.handleError(error);
 
           /* istanbul ignore else */

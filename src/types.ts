@@ -22,6 +22,12 @@ export interface Props extends Omit<React.SVGProps<SVGElement>, 'onLoad' | 'onEr
   uniquifyIDs?: boolean;
 }
 
+export interface Response {
+  headers: { get: (argument0: string) => any };
+  status: number;
+  text: () => any;
+}
+
 export interface State {
   content: string;
   element: React.ReactNode;
