@@ -52,7 +52,7 @@ describe('unsupported environments', () => {
 
     const { container } = await setup();
 
-    expect(mockOnError).toHaveBeenCalledWith(new Error('fetchRetryWarper is not a function'));
+    expect(mockOnError).toHaveBeenCalledWith(new Error('fetchWithRetry is not a function'));
     expect(container.firstChild).toMatchSnapshot();
 
     window.fetch = globalFetch;

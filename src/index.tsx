@@ -1,8 +1,15 @@
 import * as React from 'react';
 import convert from 'react-from-dom';
 
-import { canUseDOM, isSupportedEnvironment, omit, randomString, STATUS } from './helpers';
-import { FetchError, Props, Response, State, StorageItem } from './types';
+import {
+  canUseDOM,
+  isSupportedEnvironment,
+  MAX_RETRIES,
+  omit,
+  randomString,
+  STATUS,
+} from './helpers';
+import { FetchError, Props, State, StorageItem } from './types';
 
 export const cacheStore: { [key: string]: StorageItem } = Object.create(null);
 
@@ -194,16 +201,12 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
         cacheStore[src] = { content: '', status: STATUS.LOADING };
       }
 
-      const fetchRetryWarper =
+      const fetchWithRetry =
         typeof fetch === 'function'
           ? require('fetch-retry')(fetch, {
               retryOn(attempt: number, error: any, response: Response) {
-                if (attempt > 5) {
-                  return false;
-                }
-
-                // retry on any network error, or 4xx or 5xx status codes
-                if (error !== null || response.status >= 400) {
+                // retry on any network error, or 4xx or 5xx status codes.
+                if ((error !== null || response.status >= 400) && attempt <= MAX_RETRIES) {
                   return true;
                 }
 
@@ -212,7 +215,7 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
             })
           : fetch;
 
-      return fetchRetryWarper(src, fetchOptions)
+      return fetchWithRetry(src, fetchOptions)
         .then((response: Response) => {
           const contentType = response.headers.get('content-type');
           const [fileType] = (contentType || '').split(/ ?; ?/);

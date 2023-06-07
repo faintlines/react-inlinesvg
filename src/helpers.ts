@@ -11,6 +11,8 @@ export const STATUS = {
   UNSUPPORTED: 'unsupported',
 };
 
+export const MAX_RETRIES = 5;
+
 export function canUseDOM(): boolean {
   return canUseDOMFlag;
 }
