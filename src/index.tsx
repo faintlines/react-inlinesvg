@@ -196,24 +196,22 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
   private request = () => {
     const { cacheRequests, fetchOptions, src } = this.props;
 
+    if (typeof fetch !== 'function') {
+      return this.handleError(new Error('fetch is not a function'));
+    }
+
     try {
       if (cacheRequests) {
         cacheStore[src] = { content: '', status: STATUS.LOADING };
       }
 
-      const fetchWithRetry =
-        typeof fetch === 'function'
-          ? require('fetch-retry')(fetch, {
-              retryOn(attempt: number, error: any, response: Response) {
-                // retry on any network error, or 4xx or 5xx status codes.
-                if ((error !== null || response.status >= 400) && attempt <= MAX_RETRIES) {
-                  return true;
-                }
-
-                return false;
-              },
-            })
-          : fetch;
+      const fetchWithRetry = require('fetch-retry')(fetch, {
+        retryOn: (attempt: number, error: any, response: Response) => {
+          // Retry on any network error, or 4xx or 5xx status codes,
+          // as long as we don't exceed the maximum retries.
+          return (error !== null || response.status >= 400) && attempt <= MAX_RETRIES;
+        },
+      });
 
       return fetchWithRetry(src, fetchOptions)
         .then((response: Response) => {
