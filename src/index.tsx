@@ -1,7 +1,14 @@
 import * as React from 'react';
 import convert from 'react-from-dom';
 
-import { canUseDOM, isSupportedEnvironment, omit, randomString, STATUS } from './helpers';
+import {
+  canUseDOM,
+  isSupportedEnvironment,
+  MAX_RETRIES,
+  omit,
+  randomString,
+  STATUS,
+} from './helpers';
 import { FetchError, Props, State, StorageItem } from './types';
 
 export const cacheStore: { [key: string]: StorageItem } = Object.create(null);
@@ -189,13 +196,27 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
   private request = () => {
     const { cacheRequests, fetchOptions, src } = this.props;
 
+    if (typeof fetch !== 'function') {
+      return this.handleError(new Error('fetch is not a function'));
+    }
+
     try {
       if (cacheRequests) {
         cacheStore[src] = { content: '', status: STATUS.LOADING };
       }
 
-      return fetch(src, fetchOptions)
-        .then(response => {
+      const fetchWithRetry = require('fetch-retry')(fetch, {
+        retryOn: (attempt: number, error: any, response: Response) => {
+          if ((error !== null || response.status >= 400) && attempt <= MAX_RETRIES) {
+            return true;
+          }
+
+          return false;
+        },
+      });
+
+      return fetchWithRetry(src, fetchOptions)
+        .then((response: Response) => {
           const contentType = response.headers.get('content-type');
           const [fileType] = (contentType || '').split(/ ?; ?/);
 
@@ -212,7 +233,7 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
 
           return response.text();
         })
-        .then(content => {
+        .then((content: string) => {
           const { src: currentSrc } = this.props;
 
           // the current src don't match the previous one, skipping...
@@ -237,7 +258,7 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
             }
           }
         })
-        .catch(error => {
+        .catch((error: Error | FetchError) => {
           this.handleError(error);
 
           /* istanbul ignore else */
