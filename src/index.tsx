@@ -207,9 +207,11 @@ export default class InlineSVG extends React.PureComponent<Props, State> {
 
       const fetchWithRetry = require('fetch-retry')(fetch, {
         retryOn: (attempt: number, error: any, response: Response) => {
-          // Retry on any network error, or 4xx or 5xx status codes,
-          // as long as we don't exceed the maximum retries.
-          return (error !== null || response.status >= 400) && attempt <= MAX_RETRIES;
+          if ((error !== null || response.status >= 400) && attempt <= MAX_RETRIES) {
+            return true;
+          }
+
+          return false;
         },
       });
 
